@@ -7,7 +7,7 @@ using OpenTK;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Input;
-
+using System.Windows.Forms;
 
 namespace SimpleDemo
 {
@@ -29,7 +29,7 @@ namespace SimpleDemo
         Vector3 playerPos = new Vector3(0, 0, -10);
 
         Layers layers = new Layers();
-        OVR.LayerEyeFov layerFov;
+        LayerEyeFov layerFov;
 
         OculusWrap.GL.MirrorTexture mirrorTex;
 
@@ -63,33 +63,30 @@ namespace SimpleDemo
             InitShader();
             InitBuffer();
 
-            if (!wrap.Initialize()) return;
-
-            Console.WriteLine("SDK Version: " + wrap.GetVersionString());
-
-            int numberOfHeadMountedDisplays = wrap.Hmd_Detect();
-
-            // Sometimes the DK1 only gets detected after some further calls to Hmd_Detect. 
-            while (numberOfHeadMountedDisplays <= 0)
+            // Initialize the Oculus runtime.
+            bool success = wrap.Initialize();
+            if (!success)
             {
-                Console.WriteLine("Oculus Rift not found!");
-                Console.WriteLine("Press any key for detection or ESC for Exit");
-                ConsoleKeyInfo inf = Console.ReadKey();
-
-                switch (inf.Key)
-                {
-                    case ConsoleKey.Escape:
-                        Environment.Exit(0);
-                        break;
-
-                }
-
-                numberOfHeadMountedDisplays = wrap.Hmd_Detect();
+                MessageBox.Show("Failed to initialize the Oculus runtime library.", "Uh oh", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
             }
 
-            hmd = wrap.Hmd_Create(0);
+            // Use the head mounted display.
+            OVR.GraphicsLuid graphicsLuid;
+            hmd = wrap.Hmd_Create(out graphicsLuid);
+            if (hmd == null)
+            {
+                MessageBox.Show("Oculus Rift not detected.", "Uh oh", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
 
-            if (hmd == null) return;
+            if (hmd.ProductName == string.Empty)
+            {
+                MessageBox.Show("The HMD is not enabled.", "There's a tear in the Rift", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            Console.WriteLine("SDK Version: " + wrap.GetVersionString());
 
             for (int i = 0; i < 2; i++)
             {
@@ -101,7 +98,7 @@ namespace SimpleDemo
             hmd.CreateMirrorTextureGL((uint)All.Rgba, this.Width, this.Height, out mirrorTex);
 
             layerFov = layers.AddLayerEyeFov();
-            layerFov.Header.Flags = OVR.LayerFlags.TextureOriginAtBottomLeft; // OpenGL Texture coordinates start from bottom left
+            layerFov.Header.Flags = OVR.LayerFlags.None; // OpenGL Texture coordinates start from bottom left
             layerFov.Header.Type = OVR.LayerType.EyeFov;
 
             //Rendertarget for mirror desktop window
@@ -114,7 +111,8 @@ namespace SimpleDemo
             EyeRenderDesc[0] = hmd.GetRenderDesc(OVR.EyeType.Left, hmd.DefaultEyeFov[0]);
             EyeRenderDesc[1] = hmd.GetRenderDesc(OVR.EyeType.Right, hmd.DefaultEyeFov[1]);
 
-            hmd.SetEnabledCaps(OVR.HmdCaps.LowPersistence | OVR.HmdCaps.DynamicPrediction);
+            // Specify which head tracking capabilities to enable.
+            hmd.SetEnabledCaps(OVR.HmdCaps.DebugDevice);
 
             // Start the sensor
             hmd.ConfigureTracking(OVR.TrackingCaps.ovrTrackingCap_Orientation | OVR.TrackingCaps.ovrTrackingCap_MagYawCorrection | OVR.TrackingCaps.ovrTrackingCap_Position, OVR.TrackingCaps.None);
@@ -240,8 +238,9 @@ namespace SimpleDemo
 
             OVR.FrameTiming ftiming = hmd.GetFrameTiming(0);
             OVR.TrackingState hmdState = hmd.GetTrackingState(ftiming.DisplayMidpointSeconds);
+            OVR.Posef[] eyePoses = new OVR.Posef[2];
 
-            wrap.CalcEyePoses(hmdState.HeadPose.ThePose, ViewOffset, ref layerFov.RenderPose);
+            wrap.CalcEyePoses(hmdState.HeadPose.ThePose, ViewOffset, ref eyePoses);
 
             Matrix4 worldCube = Matrix4.CreateScale(5) * Matrix4.CreateRotationX(startTime) * Matrix4.CreateRotationY(startTime) * Matrix4.CreateRotationZ(startTime) * Matrix4.CreateTranslation(new Vector3(0, 0, 10));
 
@@ -249,6 +248,8 @@ namespace SimpleDemo
             {
                 for (int eyeIndex = 0; eyeIndex < 2; eyeIndex++)
                 {
+                    layerFov.RenderPose[eyeIndex] = eyePoses[eyeIndex];
+
                     // Increment SwapTextureIndex
                     eyeRenderTexture[eyeIndex].TextureSet.CurrentIndex++;
 
