@@ -68,6 +68,7 @@ namespace SimpleDemo
             if (!success)
             {
                 MessageBox.Show("Failed to initialize the Oculus runtime library.", "Uh oh", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Exit();
                 return;
             }
 
@@ -77,12 +78,14 @@ namespace SimpleDemo
             if (hmd == null)
             {
                 MessageBox.Show("Oculus Rift not detected.", "Uh oh", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Exit();
                 return;
             }
 
             if (hmd.ProductName == string.Empty)
             {
                 MessageBox.Show("The HMD is not enabled.", "There's a tear in the Rift", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Exit();
                 return;
             }
 
@@ -115,7 +118,8 @@ namespace SimpleDemo
             hmd.SetEnabledCaps(OVR.HmdCaps.DebugDevice);
 
             // Start the sensor
-            hmd.ConfigureTracking(OVR.TrackingCaps.ovrTrackingCap_Orientation | OVR.TrackingCaps.ovrTrackingCap_MagYawCorrection | OVR.TrackingCaps.ovrTrackingCap_Position, OVR.TrackingCaps.None);
+            //Update SDK 0.8: Usage of ovr_ConfigureTracking is no longer needed unless you want to disable tracking features. By default, ovr_Create enables the full tracking capabilities supported by any given device.
+            //hmd.ConfigureTracking(OVR.TrackingCaps.ovrTrackingCap_Orientation | OVR.TrackingCaps.ovrTrackingCap_MagYawCorrection | OVR.TrackingCaps.ovrTrackingCap_Position, OVR.TrackingCaps.None);
 
             this.VSync = VSyncMode.Off;
 
@@ -236,8 +240,8 @@ namespace SimpleDemo
                 EyeRenderDesc[1].HmdToEyeViewOffset 
             };
 
-            OVR.FrameTiming ftiming = hmd.GetFrameTiming(0);
-            OVR.TrackingState hmdState = hmd.GetTrackingState(ftiming.DisplayMidpointSeconds);
+            double displayMidpoint = hmd.GetPredictedDisplayTime(0);
+            OVR.TrackingState hmdState = hmd.GetTrackingState(displayMidpoint);
             OVR.Posef[] eyePoses = new OVR.Posef[2];
 
             wrap.CalcEyePoses(hmdState.HeadPose.ThePose, ViewOffset, ref eyePoses);
@@ -338,8 +342,8 @@ namespace SimpleDemo
         protected override void OnUnload(EventArgs e)
         {
             // Deleting buffers, rendertargets, dispose...
-            eyeRenderTexture[0].CleanUp();
-            eyeRenderTexture[1].CleanUp();
+            if (eyeRenderTexture[0] != null) eyeRenderTexture[0].CleanUp();
+            if (eyeRenderTexture[1] != null) eyeRenderTexture[1].CleanUp();
 
             GL.DeleteFramebuffers(1, ref mirrorFbo);
 
@@ -350,8 +354,9 @@ namespace SimpleDemo
             GL.DeleteProgram(cubeProgram);
 
 
-            hmd.Dispose();
-            wrap.Dispose();
+            if (hmd != null) hmd.Dispose();
+            if (wrap != null) wrap.Dispose();
+            if (layers != null) layers.Dispose();
 
             base.OnUnload(e);
         }
