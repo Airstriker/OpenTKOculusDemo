@@ -101,7 +101,7 @@ namespace SimpleDemo
             hmd.CreateMirrorTextureGL((uint)All.Rgba, this.Width, this.Height, out mirrorTex);
 
             layerFov = layers.AddLayerEyeFov();
-            layerFov.Header.Flags = OVR.LayerFlags.None; // OpenGL Texture coordinates start from bottom left
+            layerFov.Header.Flags = OVR.LayerFlags.TextureOriginAtBottomLeft; // OpenGL Texture coordinates start from bottom left
             layerFov.Header.Type = OVR.LayerType.EyeFov;
 
             //Rendertarget for mirror desktop window
@@ -254,8 +254,8 @@ namespace SimpleDemo
                 {
                     layerFov.RenderPose[eyeIndex] = eyePoses[eyeIndex];
 
-                    // Increment SwapTextureIndex
-                    eyeRenderTexture[eyeIndex].TextureSet.CurrentIndex++;
+                    // Increment to use next texture, just before writing
+                    eyeRenderTexture[eyeIndex].TextureSet.CurrentIndex = (eyeRenderTexture[eyeIndex].TextureSet.CurrentIndex + 1) % eyeRenderTexture[eyeIndex].TextureSet.TextureCount;
 
                     GL.Viewport(0, 0, eyeRenderTexture[eyeIndex].Width, eyeRenderTexture[eyeIndex].Height);
 
@@ -266,6 +266,15 @@ namespace SimpleDemo
                     // Setup Viewmatrix
                     Quaternion rotationQuaternion = layerFov.RenderPose[eyeIndex].Orientation.ToTK();
                     Matrix4 rotationMatrix = Matrix4.CreateFromQuaternion(rotationQuaternion);
+                    
+                    // I M P O R T A N T !!!! Play with this scaleMatrix to tweek HMD's Pitch, Yaw and Roll behavior. It depends on your coordinate system.
+                    //Convert to X=right, Y=up, Z=in
+                    //S = [1, 1, -1];
+                    //viewMat = viewMat * S * R * S;
+
+                    Matrix4 scaleMatrix = Matrix4.CreateScale(-1f, 1f, -1f);
+                    rotationMatrix = scaleMatrix * rotationMatrix * scaleMatrix;
+
                     Vector3 lookUp = Vector3.Transform(Vector3.UnitY, rotationMatrix);
                     Vector3 lookAt = Vector3.Transform(Vector3.UnitZ, rotationMatrix);
 
