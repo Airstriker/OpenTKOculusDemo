@@ -98,7 +98,8 @@ namespace SimpleDemo
                 eyeDepthBuffer[i] = new DepthBuffer(eyeRenderTexture[i].Width, eyeRenderTexture[i].Height);
             }
 
-            hmd.CreateMirrorTextureGL((uint)All.Rgba, this.Width, this.Height, out mirrorTex);
+            //For image displayed at ordinary monitor - copy of Oculus rendered one.
+            hmd.CreateMirrorTextureGL((uint)All.Srgb8Alpha8, this.Width, this.Height, out mirrorTex);
 
             layerFov = layers.AddLayerEyeFov();
             layerFov.Header.Flags = OVR.LayerFlags.TextureOriginAtBottomLeft; // OpenGL Texture coordinates start from bottom left
@@ -240,8 +241,10 @@ namespace SimpleDemo
                 EyeRenderDesc[1].HmdToEyeViewOffset 
             };
 
-            double displayMidpoint = hmd.GetPredictedDisplayTime(0);
-            OVR.TrackingState hmdState = hmd.GetTrackingState(displayMidpoint);
+            double ftiming = hmd.GetPredictedDisplayTime(0);
+            // Keeping sensorSampleTime as close to ovr_GetTrackingState as possible - fed into the layer
+            double sensorSampleTime = wrap.GetTimeInSeconds();
+            OVR.TrackingState hmdState = hmd.GetTrackingState(ftiming);
             OVR.Posef[] eyePoses = new OVR.Posef[2];
 
             wrap.CalcEyePoses(hmdState.HeadPose.ThePose, ViewOffset, ref eyePoses);
@@ -308,7 +311,9 @@ namespace SimpleDemo
                 layerFov.ColorTexture[eyeIndex] = eyeRenderTexture[eyeIndex].TextureSet.SwapTextureSetPtr;
                 layerFov.Viewport[eyeIndex].Position = new OVR.Vector2i(0, 0);
                 layerFov.Viewport[eyeIndex].Size = new OVR.Sizei(eyeRenderTexture[eyeIndex].Width, eyeRenderTexture[eyeIndex].Height);
-                layerFov.Fov[eyeIndex] = EyeRenderDesc[eyeIndex].Fov;
+                layerFov.Fov[eyeIndex] = hmd.DefaultEyeFov[eyeIndex];
+                layerFov.RenderPose[eyeIndex] = eyePoses[eyeIndex];
+                layerFov.SensorSampleTime = sensorSampleTime;
             }
            
             OVR.ovrResult result = hmd.SubmitFrame(0, layers);
