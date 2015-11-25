@@ -281,7 +281,7 @@ namespace SimpleDemo
                     Vector3 lookUp = Vector3.Transform(Vector3.UnitY, rotationMatrix);
                     Vector3 lookAt = Vector3.Transform(Vector3.UnitZ, rotationMatrix);
 
-                    Vector3 viewPosition = playerPos + layerFov.RenderPose[eyeIndex].Position.ToTK();
+                    Vector3 viewPosition = playerPos - layerFov.RenderPose[eyeIndex].Position.ToTK(); //If head tracking is reversed - change minus to plus.
                     Matrix4 view = Matrix4.LookAt(viewPosition, viewPosition + lookAt, lookUp);
                     Matrix4 proj = OVR.ovrMatrix4f_Projection(hmd.DefaultEyeFov[eyeIndex], 0.1f, 1000.0f, OVR.ProjectionModifier.RightHanded).ToTK();
                     proj.Transpose();
