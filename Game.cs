@@ -355,26 +355,55 @@ namespace SimpleDemo
 
         protected override void OnUnload(EventArgs e)
         {
+            // Release all resources
             // Deleting buffers, rendertargets, dispose...
             if (eyeRenderTexture[0] != null) eyeRenderTexture[0].CleanUp();
             if (eyeRenderTexture[1] != null) eyeRenderTexture[1].CleanUp();
 
-            GL.DeleteFramebuffers(1, ref mirrorFbo);
+            if (mirrorFbo != 0) GL.DeleteFramebuffers(1, ref mirrorFbo);
+            Dispose(mirrorTex);
 
             GL.DeleteBuffer(cubeBuf);
             GL.DeleteBuffer(cubeColBuf);
             GL.DeleteBuffer(cubeIdxBuf);
 
             GL.DeleteProgram(cubeProgram);
+            
+            Dispose(layers);
 
-
-            if (hmd != null) hmd.Dispose();
-            if (wrap != null) wrap.Dispose();
-            if (layers != null) layers.Dispose();
+            // Disposing the device, before the hmd, will cause the hmd to fail when disposing.
+            // Disposing the device, after the hmd, will cause the dispose of the device to fail.
+            // It looks as if the hmd steals ownership of the device and destroys it, when it's shutting down.
+            // device.Dispose();
+            Dispose(hmd);
+            Dispose(wrap);
 
             base.OnUnload(e);
         }
 
+
+        //Called when the NativeWindow is about to close.
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            base.OnClosing(e);
+
+            GL.BindTexture(TextureTarget.Texture2D, 0);
+            GL.Finish();
+            OpenTK.Graphics.GraphicsContext current = (OpenTK.Graphics.GraphicsContext)OpenTK.Graphics.GraphicsContext.CurrentContext;
+            current.MakeCurrent(null);
+            current.Dispose();
+        }
+
+
+        /// <summary>
+		/// Dispose the specified object, unless it's a null object.
+		/// </summary>
+		/// <param name="disposable">Object to dispose.</param>
+		public static void Dispose(IDisposable disposable)
+        {
+            if (disposable != null)
+                disposable.Dispose();
+        }
 
         private static readonly Vector3[] cubeVertices = new Vector3[]
         {
