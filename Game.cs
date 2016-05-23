@@ -70,7 +70,7 @@ namespace SimpleDemo
             initializationParameters.Flags = OVRTypes.InitFlags.Debug;
 
             // Initialize the Oculus runtime.
-            bool success = wrap.Initialize();
+            bool success = wrap.Initialize(initializationParameters);
             if (!success)
             {
                 MessageBox.Show("Failed to initialize the Oculus runtime library.", "Uh oh", MessageBoxButtons.OK, MessageBoxIcon.Error);
