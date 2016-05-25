@@ -287,10 +287,6 @@ namespace SimpleDemo
             //double displayMidpoint = hmd.GetPredictedDisplayTime(0);
             //OVRTypes.TrackingState trackingState = hmd.GetTrackingState(displayMidpoint, true);
 
-            //double ftiming = hmd.GetPredictedDisplayTime(0);
-            //OVR.TrackingState hmdState = hmd.GetTrackingState(ftiming);
-
-
             Matrix4 worldCube = Matrix4.CreateScale(5) * Matrix4.CreateRotationX(startTime) * Matrix4.CreateRotationY(startTime) * Matrix4.CreateRotationZ(startTime) * Matrix4.CreateTranslation(new Vector3(0, 0, 10));
 
             try

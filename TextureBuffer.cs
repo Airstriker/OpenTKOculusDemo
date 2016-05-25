@@ -57,17 +57,23 @@ namespace SimpleDemo
             {
                 // This texture isn't necessarily going to be a rendertarget, but it usually is.
                 Debug.Assert(hmd != null); // No HMD? A little odd.
-                Debug.Assert(sampleCount == 1); // ovr_CreateSwapTextureSetD3D11 doesn't support MSAA.
+
+                // It looks like that in order to disable sRGB we have to
+                // set the texture format to sRGB but omit the call the
+                // enabling sRGB in the framebuffer. Info here:
+                // https://forums.oculus.com/community/discussion/24347/srgb-and-sdk-0-6-0-0
 
                 OVRTypes.TextureSwapChainDesc desc = new OVRTypes.TextureSwapChainDesc();
                 desc.Type = OVRTypes.TextureType.Texture2D;
                 desc.ArraySize = 1;
                 desc.Width = size.Width;
                 desc.Height = size.Height;
-                desc.MipLevels = 1;
-                desc.Format = OVRTypes.TextureFormat.R8G8B8A8_UNORM_SRGB;
-                desc.SampleCount = 1;
+                desc.MipLevels = mipLevels;
+                desc.Format = OVRTypes.TextureFormat.R8G8B8A8_UNORM_SRGB; //Remember to call GL.Disable(EnableCap.FramebufferSrgb) later
+                desc.SampleCount = sampleCount;
                 desc.StaticImage = 0;
+                if (mipLevels > 1)
+                    desc.MiscFlags = OVRTypes.TextureMiscFlags.AllowGenerateMips;
 
                 result = hmd.CreateTextureSwapChainGL(desc, out textureChain);
                 WriteErrorDetails(wrap, result, "Failed to create swap chain.");
@@ -190,7 +196,9 @@ namespace SimpleDemo
 
             GL.Viewport(0, 0, texSize.Width, texSize.Height);
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-            GL.Enable(EnableCap.FramebufferSrgb);
+
+            //Disbale SRGB - needed for correct colorspace!
+            GL.Disable(EnableCap.FramebufferSrgb);
         }
 
         public void UnsetRenderSurface()
